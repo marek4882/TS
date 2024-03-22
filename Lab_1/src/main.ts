@@ -27,7 +27,13 @@ export class LocalRepository implements Repository {
 
 
 export class ProjectManager{
-  private repository!: Repository;
+  private repository: Repository;
+
+  constructor(repository: Repository){
+    this.repository = repository
+  }
+
+  
 
   public add(name: string, description: string): void {
     const projects = this.repository.readProjects();
