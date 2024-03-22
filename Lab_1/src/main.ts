@@ -1,20 +1,72 @@
-import './style.css'
+import { v4 as uuid } from "uuid";
 
-interface Project{
-  id: number;
+export type Project = {
+  id: string;
   name: string;
   description: string;
+};
+
+export interface Repository {
+  readProjects(): Project[];
+  saveProjects(projects: Project[]): void;
 }
 
-const addProject = document.getElementById("add")
+export class LocalRepository implements Repository {
+  private static readonly storageKey = 'projects';
 
-addProject?.addEventListener("click", () =>{
-  const newProject = {
-    id: randomUUID(),
-    name:
+  public readProjects(): Project[] {
+    const projectsData = localStorage.getItem(LocalRepository.storageKey);
+    return projectsData ? JSON.parse(projectsData) : [];
   }
-})
 
+  public saveProjects(projects: Project[]): void {
+    localStorage.setItem(LocalRepository.storageKey, JSON.stringify(projects));
+  }
+}
+
+
+
+export class ProjectManager{
+  private repository!: Repository;
+
+  public add(name: string, description: string): void {
+    const projects = this.repository.readProjects();
+    const project: Project = {
+      id: uuid(),
+      name,
+      description,
+    };
+    projects.push(project);
+    this.repository.saveProjects(projects);
+  }
+
+  public read(): Project[] {
+    return this.repository.readProjects();
+  }
+
+  public update(id: string, newName: string, newDescription: string): boolean {
+    const projects = this.repository.readProjects();
+    const index = projects.findIndex((project) => project.id === id);
+    if (index !== -1) {
+      projects[index].name = newName;
+      projects[index].description = newDescription;
+      this.repository.saveProjects(projects);
+      return true;
+    }
+    return false;
+  }
+
+  public delete(id: string): boolean {
+    const projects = this.repository.readProjects();
+    const initialLength = projects.length;
+    const updatedProjects = projects.filter((project) => project.id !== id);
+    if (updatedProjects.length !== initialLength) {
+      this.repository.saveProjects(updatedProjects);
+      return true;
+    }
+    return false;
+  }
+}
 
 
 
