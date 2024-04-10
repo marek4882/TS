@@ -1,99 +1,157 @@
-import "./style.css";
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuid } from "uuid";
+import "./style.css"
 
-interface Project {
+export type Project = {
   id: string;
   name: string;
   description: string;
+};
+document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+<div>
+  <form>
+    <div>
+      <label for="projectName">Nazwa Projektu:</label>
+      <input type="text" id="projectName" name="projectName" required>
+    </div>
+    <div>
+      <label for="projectDescription">Opis Projektu:</label>
+      <textarea id="projectDescription" name="projectDescription" rows="4" required></textarea>
+    </div>
+    <button type="submit" id="add">Dodaj Projekt</button>
+  </form>
+</div>
+<div id="projectList"></div>
+</div>
+
+`
+
+export interface Repository {
+  readProjects(): Project[];
+  saveProjects(projects: Project[]): void;
 }
 
-const projects: Project[] = [];
+export class LocalRepository implements Repository {
+  private static readonly storageKey = 'projects';
 
-// CREATE
-const addProject = (name: string, description: string) => {
-  console.log("Działa funkcja add project");
-  const id = uuidv4();
-  const newProject: Project = { id, name, description };
-  projects.push(newProject);
-  displayProjects();
-};
-// READ
-const displayProjects = () => {
-  console.log("Działa funkcja display project");
-  const projectsDiv = document.getElementById("projects")!;
-  projectsDiv.innerHTML= "";
-  projects.forEach((project) => {
-    const projectElement = document.createElement("div");
-    projectElement.innerHTML = `
-      <h3>${project.name}</h3>
-      <p>${project.description}</p>
-      <button onclick="editProject('${project.id}')">Edytuj</button>
-      <button onclick="deleteProject('${project.id}')">Usuń</button>
-    `;
-    projectsDiv.appendChild(projectElement);
-  });
-};
-
-// UPDATE
-const editProject = (id: string) => {
-  const projectToEdit = projects.find((project) => project.id === id);
-  if (!projectToEdit) return;
-  const newName = prompt("Wprowadź nową nazwę projektu:", projectToEdit.name);
-  const newDescription = prompt(
-    "Wprowadź nowy opis projektu:",
-    projectToEdit.description
-  );
-  if (newName !== null && newDescription !== null) {
-    projectToEdit.name = newName;
-    projectToEdit.description = newDescription;
-    displayProjects();
+  public readProjects(): Project[] {
+    const projectsData = localStorage.getItem(LocalRepository.storageKey);
+    return projectsData ? JSON.parse(projectsData) : [];
   }
-};
 
-// DELETE
-const deleteProject = (id: string) => {
-  const index = projects.findIndex((project) => project.id === id);
-  if (index !== -1) {
-    projects.splice(index, 1);
-    displayProjects();
+  public saveProjects(projects: Project[]): void {
+    localStorage.setItem(LocalRepository.storageKey, JSON.stringify(projects));
   }
-};
-
-const handleFormSubmit = (event: Event) => {
-  console.log("Działa funkcja handle projecct");
-  const projectNameInput = document.getElementById(
-    "projectName"
-  ) as HTMLInputElement;
-  const projectDescriptionInput = document.getElementById(
-    "projectDescription"
-  ) as HTMLTextAreaElement;
-  const projectName = projectNameInput.value;
-  const projectDescription = projectDescriptionInput.value;
-  addProject(projectName, projectDescription);
- 
-};
-const projectForm = document.getElementById("projectForm");
-
-projectForm?.addEventListener("submit", handleFormSubmit);
+}
 
 
 
-document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
-<div>
-<form id="projectForm">
+export class ProjectManager{
+  private repository: Repository;
+
+  constructor(repository: Repository){
+    this.repository = repository
+  }
+
+  
+
+  public add(name: string, description: string): void {
+    const projects = this.repository.readProjects();
+    const project: Project = {
+      id: uuid(),
+      name,
+      description,
+    };
+    projects.push(project);
+    this.repository.saveProjects(projects);
+  }
+
+  public read(): Project[] {
+    return this.repository.readProjects();
+  }
+
+  public update(id: string, newName: string, newDescription: string): boolean {
+    const projects = this.repository.readProjects();
+    const index = projects.findIndex((project) => project.id === id);
+    if (index !== -1) {
+      projects[index].name = newName;
+      projects[index].description = newDescription;
+      this.repository.saveProjects(projects);
+      return true;
+    }
+    return false;
+  }
+
+  public delete(id: string): boolean {
+    const projects = this.repository.readProjects();
+    const initialLength = projects.length;
+    const updatedProjects = projects.filter((project) => project.id !== id);
+    if (updatedProjects.length !== initialLength) {
+      this.repository.saveProjects(updatedProjects);
+      return true;
+    }
+    return false;
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const projectManager = new ProjectManager(new LocalRepository());
+
+  const form = document.querySelector<HTMLFormElement>('form')!;
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const projectNameInput = document.querySelector<HTMLInputElement>('#projectName')!;
+    const projectDescriptionInput = document.querySelector<HTMLTextAreaElement>('#projectDescription')!;
     
-        <div>
-            <label for="projectName">Nazwa Projektu:</label>
-            <input type="text" id="projectName" name="projectName" required>
-        </div>
-        <div>
-            <label for="projectDescription">Opis Projektu:</label>
-            <textarea id="projectDescription" name="projectDescription" rows="4" required></textarea>
-        </div>
-        <button type="submit">Dodaj Projekt</button>
-        </form>
-        <div id="projects"></div>
-        </div>
+    const projectName = projectNameInput.value.trim();
+    const projectDescription = projectDescriptionInput.value.trim();
+    
+    if (projectName && projectDescription) {
+      projectManager.add(projectName, projectDescription);
+      projectNameInput.value = '';
+      projectDescriptionInput.value = '';
+      refreshProjectList();
+    }
+  });
+
+  function refreshProjectList() {
+    const projectListContainer = document.querySelector<HTMLDivElement>('#projectList')!;
+    const projects = projectManager.read();
+    projectListContainer.innerHTML = '';
+    projects.forEach(project => {
+      const projectElement = document.createElement('div');
+      projectElement.innerHTML = `
+        <h3>${project.name}</h3>
+        <p>${project.description}</p>
+        <button onclick="editProject('${project.id}')">Edytuj</button>
+        <button onclick="deleteProject('${project.id}')">Usuń</button>
+      `;
+      projectListContainer.appendChild(projectElement);
+    });
+  }
+
+  function editProject(id: string) {
+    const newName = prompt('Nowa nazwa projektu:');
+    const newDescription = prompt('Nowy opis projektu:');
+    if (newName !== null && newDescription !== null) {
+      const updated = projectManager.update(id, newName, newDescription);
+      if (updated) {
+        refreshProjectList();
+      } else {
+        alert('Nie można zaktualizować projektu - projekt o podanym ID nie istnieje.');
+      }
+    }
+  }
+
+  function deleteProject(id: string) {
+    const deleted = projectManager.delete(id);
+    if (deleted) {
+      refreshProjectList();
+    } else {
+      alert('Nie można usunąć projektu - projekt o podanym ID nie istnieje.');
+    }
+  }
+
+  refreshProjectList();
+});
 
 
-`;
+
