@@ -11,14 +11,15 @@ const projects: Project[] = [];
 
 // CREATE
 const addProject = (name: string, description: string) => {
+  console.log("Działa funkcja add project");
   const id = uuidv4();
   const newProject: Project = { id, name, description };
   projects.push(newProject);
   displayProjects();
 };
-
 // READ
 const displayProjects = () => {
+  console.log("Działa funkcja display project");
   const projectsDiv = document.getElementById("projects")!;
   projectsDiv.innerHTML= "";
   projects.forEach((project) => {
@@ -59,7 +60,7 @@ const deleteProject = (id: string) => {
 };
 
 const handleFormSubmit = (event: Event) => {
-  event.preventDefault();
+  console.log("Działa funkcja handle projecct");
   const projectNameInput = document.getElementById(
     "projectName"
   ) as HTMLInputElement;
@@ -72,9 +73,9 @@ const handleFormSubmit = (event: Event) => {
  
 };
 const projectForm = document.getElementById("projectForm");
-if (projectForm) {
-  projectForm.addEventListener("submit", handleFormSubmit);
-}
+
+projectForm?.addEventListener("submit", handleFormSubmit);
+
 
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
