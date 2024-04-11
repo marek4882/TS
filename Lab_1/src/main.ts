@@ -1,12 +1,13 @@
 import { v4 as uuid } from "uuid";
-import "./style.css"
+import "./style.css";
 
-export type Project = {
+export interface Project {
   id: string;
   name: string;
   description: string;
-};
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+}
+
+document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 <div>
   <form>
     <div>
@@ -21,9 +22,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </form>
 </div>
 <div id="projectList"></div>
-</div>
-
-`
+</div>`;
 
 export interface Repository {
   readProjects(): Project[];
@@ -31,7 +30,7 @@ export interface Repository {
 }
 
 export class LocalRepository implements Repository {
-  private static readonly storageKey = 'projects';
+  private static readonly storageKey = "projects";
 
   public readProjects(): Project[] {
     const projectsData = localStorage.getItem(LocalRepository.storageKey);
@@ -43,16 +42,12 @@ export class LocalRepository implements Repository {
   }
 }
 
-
-
-export class ProjectManager{
+export class ProjectManager {
   private repository: Repository;
 
-  constructor(repository: Repository){
-    this.repository = repository
+  constructor(repository: Repository) {
+    this.repository = repository;
   }
-
-  
 
   public add(name: string, description: string): void {
     const projects = this.repository.readProjects();
@@ -92,66 +87,86 @@ export class ProjectManager{
     return false;
   }
 }
-document.addEventListener('DOMContentLoaded', () => {
+
+document.addEventListener("DOMContentLoaded", () => {
   const projectManager = new ProjectManager(new LocalRepository());
 
-  const form = document.querySelector<HTMLFormElement>('form')!;
-  form.addEventListener('submit', (event) => {
+  const form = document.querySelector<HTMLFormElement>("form")!;
+  form.addEventListener("submit", (event: Event) => {
     event.preventDefault();
-    const projectNameInput = document.querySelector<HTMLInputElement>('#projectName')!;
-    const projectDescriptionInput = document.querySelector<HTMLTextAreaElement>('#projectDescription')!;
-    
+    const projectNameInput =
+      document.querySelector<HTMLInputElement>("#projectName")!;
+    const projectDescriptionInput = document.querySelector<HTMLTextAreaElement>(
+      "#projectDescription"
+    )!;
+
     const projectName = projectNameInput.value.trim();
     const projectDescription = projectDescriptionInput.value.trim();
-    
+
     if (projectName && projectDescription) {
       projectManager.add(projectName, projectDescription);
-      projectNameInput.value = '';
-      projectDescriptionInput.value = '';
+      projectNameInput.value = "";
+      projectDescriptionInput.value = "";
       refreshProjectList();
     }
   });
 
-  function refreshProjectList() {
-    const projectListContainer = document.querySelector<HTMLDivElement>('#projectList')!;
+  function refreshProjectList(): void {
+    const projectListContainer =
+      document.querySelector<HTMLDivElement>("#projectList")!;
     const projects = projectManager.read();
-    projectListContainer.innerHTML = '';
-    projects.forEach(project => {
-      const projectElement = document.createElement('div');
+    projectListContainer.innerHTML = "";
+    projects.forEach((project) => {
+      const projectElement = document.createElement("div");
       projectElement.innerHTML = `
         <h3>${project.name}</h3>
         <p>${project.description}</p>
-        <button onclick="editProject('${project.id}')">Edytuj</button>
-        <button onclick="deleteProject('${project.id}')">Usuń</button>
+        <button class="edit-btn" data-id="${project.id}">Edytuj</button>
+        <button class="delete-btn" data-id="${project.id}">Usuń</button>
       `;
       projectListContainer.appendChild(projectElement);
     });
+
+    const editButtons = document.querySelectorAll<HTMLButtonElement>(".edit-btn");
+    editButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        const projectId = button.dataset.id!;
+        editProject(projectId);
+      });
+    });
+
+    const deleteButtons = document.querySelectorAll<HTMLButtonElement>(".delete-btn");
+    deleteButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        const projectId = button.dataset.id!;
+        deleteProject(projectId);
+      });
+    });
   }
 
-  function editProject(id: string) {
-    const newName = prompt('Nowa nazwa projektu:');
-    const newDescription = prompt('Nowy opis projektu:');
+  function editProject(id: string): void {
+    const newName = prompt("Nowa nazwa projektu:");
+    const newDescription = prompt("Nowy opis projektu:");
     if (newName !== null && newDescription !== null) {
       const updated = projectManager.update(id, newName, newDescription);
       if (updated) {
         refreshProjectList();
       } else {
-        alert('Nie można zaktualizować projektu - projekt o podanym ID nie istnieje.');
+        alert(
+          "Nie można zaktualizować projektu - projekt o podanym ID nie istnieje."
+        );
       }
     }
   }
 
-  function deleteProject(id: string) {
+  function deleteProject(id: string): void {
     const deleted = projectManager.delete(id);
     if (deleted) {
       refreshProjectList();
     } else {
-      alert('Nie można usunąć projektu - projekt o podanym ID nie istnieje.');
+      alert("Nie można usunąć projektu - projekt o podanym ID nie istnieje.");
     }
   }
 
   refreshProjectList();
 });
-
-
-
